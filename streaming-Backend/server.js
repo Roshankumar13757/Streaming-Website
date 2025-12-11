@@ -3,13 +3,15 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser'); // ADD THIS
+
+// Load environment variables FIRST
+dotenv.config();
+
 const connectDB = require('./config/database');
 
 const authRoutes = require('./routes/authRoutes');
 const videoRoutes = require('./routes/videoRoutes');
 const commentRoutes = require('./routes/commentRoutes');
-
-dotenv.config();
 
 const app = express();
 connectDB();
