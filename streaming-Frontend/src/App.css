@@ -1,0 +1,17 @@
+.App {
+  min-height: 100vh;
+  background-color: #0f0f0f;
+}
+
+.main-content {
+  padding-top: 70px;
+  min-height: calc(100vh - 70px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main-content {
+    padding-top: 60px;
+  }
+}
+
