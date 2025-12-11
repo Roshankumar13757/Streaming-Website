@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 
 // Establish MongoDB connection
 const connectDB = async () => {
-  const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/streaming';
+  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/streaming';
 
   // Log the exact URI being used (per request, no masking)
   console.log(`Connecting to MongoDB at ${uri}`);
