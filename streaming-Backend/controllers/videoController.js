@@ -1,8 +1,8 @@
 // controllers/videoController.js - Video Controller
 const fs = require('fs');
 const path = require('path');
-const Video = require('./models/Video');
-const User = require('./models/User');
+const Video = require('../models/Video');
+const User = require('../models/User');
 
 // @desc    Upload a new video
 // @route   POST /api/videos/upload
