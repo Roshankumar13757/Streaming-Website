@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { videoAPI, commentAPI } from '../services/api';
+import { videoAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Comments from '../components/Comments/Comments';
 import './VideoPage.css';
@@ -13,11 +13,7 @@ const VideoPage = () => {
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
 
-  useEffect(() => {
-    fetchVideo();
-  }, [id]);
-
-  const fetchVideo = async () => {
+  const fetchVideo = useCallback(async () => {
     try {
       setLoading(true);
       const response = await videoAPI.getVideoById(id);
@@ -30,7 +26,11 @@ const VideoPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    fetchVideo();
+  }, [fetchVideo]);
 
   const handleLike = async () => {
     if (!user) {

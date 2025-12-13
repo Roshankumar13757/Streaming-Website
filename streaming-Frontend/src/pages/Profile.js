@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authAPI, videoAPI } from '../services/api';
@@ -15,19 +15,7 @@ const Profile = () => {
     email: '',
   });
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    setFormData({
-      username: user.username || '',
-      email: user.email || '',
-    });
-    fetchUserVideos();
-  }, [user, navigate]);
-
-  const fetchUserVideos = async () => {
+  const fetchUserVideos = useCallback(async () => {
     if (!user?.id) return;
     try {
       setLoading(true);
@@ -38,7 +26,19 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    setFormData({
+      username: user.username || '',
+      email: user.email || '',
+    });
+    fetchUserVideos();
+  }, [user, navigate, fetchUserVideos]);
 
   const handleInputChange = (e) => {
     setFormData({

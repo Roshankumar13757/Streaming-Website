@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { commentAPI } from '../../services/api';
 import './Comments.css';
@@ -11,11 +11,7 @@ const Comments = ({ videoId }) => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
 
-  useEffect(() => {
-    fetchComments();
-  }, [videoId]);
-
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     try {
       setLoading(true);
       const response = await commentAPI.getComments(videoId);
@@ -25,7 +21,11 @@ const Comments = ({ videoId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [videoId]);
+
+  useEffect(() => {
+    fetchComments();
+  }, [fetchComments]);
 
   const handleAddComment = async (e) => {
     e.preventDefault();

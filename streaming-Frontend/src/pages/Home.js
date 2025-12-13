@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { videoAPI } from '../services/api';
 import './Home.css';
@@ -10,11 +10,7 @@ const Home = () => {
   const [category, setCategory] = useState('All');
   const [sortBy, setSortBy] = useState('newest');
 
-  useEffect(() => {
-    fetchVideos();
-  }, [category, sortBy, search]);
-
-  const fetchVideos = async () => {
+  const fetchVideos = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -29,7 +25,11 @@ const Home = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [category, sortBy, search]);
+
+  useEffect(() => {
+    fetchVideos();
+  }, [fetchVideos]);
 
   const handleSearch = (e) => {
     e.preventDefault();
