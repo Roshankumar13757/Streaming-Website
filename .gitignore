@@ -1,0 +1,27 @@
+# Repository-level ignores
+# Node modules
+node_modules/
+
+# Environment
+.env
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Editor directories
+.vscode/
+.idea/
+
+# Next.js build
+.next/
+out/
+
+# Misc
+coverage/
+dist/
+build/
