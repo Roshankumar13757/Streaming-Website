@@ -1,13 +1,14 @@
 "use client"
 
 import type React from "react"
+import { Suspense } from "react"
 
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
-export function SearchBar() {
+function SearchBarContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [search, setSearch] = useState(searchParams.get("search") || "")
@@ -34,5 +35,23 @@ export function SearchBar() {
         className="pl-10"
       />
     </form>
+  )
+}
+
+export function SearchBar() {
+  return (
+    <Suspense fallback={
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          placeholder="Search videos..."
+          className="pl-10"
+          disabled
+        />
+      </div>
+    }>
+      <SearchBarContent />
+    </Suspense>
   )
 }

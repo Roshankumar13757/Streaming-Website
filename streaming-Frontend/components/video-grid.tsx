@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { VideoCard } from "@/components/video-card"
 import { useSearchParams } from "next/navigation"
 import { Spinner } from "@/components/ui/spinner"
@@ -20,7 +20,7 @@ interface Video {
   category: string
 }
 
-export function VideoGrid() {
+function VideoGridContent() {
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -104,5 +104,17 @@ export function VideoGrid() {
         <VideoCard key={video._id} video={video} />
       ))}
     </div>
+  )
+}
+
+export function VideoGrid() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center py-12">
+        <Spinner className="h-8 w-8" />
+      </div>
+    }>
+      <VideoGridContent />
+    </Suspense>
   )
 }

@@ -1,12 +1,13 @@
 "use client"
 
+import { Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Sparkles } from "lucide-react"
 
 const categories = ["All", "Gaming", "Music", "Education", "Entertainment", "Sports", "Technology", "Other"]
 
-export function CategoryFilter() {
+function CategoryFilterContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const currentCategory = searchParams.get("category") || "All"
@@ -45,5 +46,27 @@ export function CategoryFilter() {
         ))}
       </div>
     </div>
+  )
+}
+
+export function CategoryFilter() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-muted-foreground">Browse by Category</h3>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {categories.map((category) => (
+            <Button key={category} variant="outline" size="sm" className="whitespace-nowrap" disabled>
+              {category}
+            </Button>
+          ))}
+        </div>
+      </div>
+    }>
+      <CategoryFilterContent />
+    </Suspense>
   )
 }

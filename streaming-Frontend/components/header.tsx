@@ -6,11 +6,11 @@ import { Video, Upload, User, LogOut, Search, Menu, X, Home, TrendingUp, History
 import { useAuth } from "@/components/auth-provider"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
-export function Header() {
+function HeaderContent() {
   const { user, logout } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -201,5 +201,27 @@ export function Header() {
         )}
       </div>
     </header>
+  )
+}
+
+export function Header() {
+  return (
+    <Suspense fallback={
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur-md">
+        <div className="container mx-auto px-4">
+          <div className="flex h-20 items-center justify-between gap-4">
+            <Link href="/" className="flex items-center gap-2 text-xl font-bold">
+              <Video className="h-7 w-7 text-primary" />
+              <span className="bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                StreamHub
+              </span>
+            </Link>
+            <div className="h-10 w-64 animate-pulse rounded-full bg-muted/50"></div>
+          </div>
+        </div>
+      </header>
+    }>
+      <HeaderContent />
+    </Suspense>
   )
 }
