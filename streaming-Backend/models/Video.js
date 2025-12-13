@@ -17,6 +17,23 @@ const videoSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // Mega Drive integration fields
+  megaFileId: {
+    type: String,
+    default: null
+  },
+  megaDownloadUrl: {
+    type: String,
+    default: null
+  },
+  megaPublicUrl: {
+    type: String,
+    default: null
+  },
+  fileSize: {
+    type: Number,
+    default: 0
+  },
   thumbnail: {
     type: String,
     default: null

@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser'); // ADD THIS
 dotenv.config();
 
 const connectDB = require('./config/database');
+const { initializeMega } = require('./config/megaConfig');
 
 const authRoutes = require('./routes/authRoutes');
 const videoRoutes = require('./routes/videoRoutes');
@@ -15,6 +16,11 @@ const commentRoutes = require('./routes/commentRoutes');
 
 const app = express();
 connectDB();
+
+// Initialize Mega Drive (non-blocking)
+initializeMega().catch(err => {
+  console.error('Mega initialization error:', err);
+});
 
 // Middleware
 const allowedOrigins = [

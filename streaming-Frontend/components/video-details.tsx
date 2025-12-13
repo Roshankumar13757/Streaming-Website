@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { ThumbsUp, Eye, Trash2 } from "lucide-react"
+import { ThumbsUp, Eye, Trash2, Bookmark, Share2 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { SocialShare } from "@/components/social-share"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 interface Video {
   _id: string
@@ -143,22 +145,32 @@ export function VideoDetails({ videoId }: { videoId: string }) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-y border-border py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20">
-            <span className="font-semibold text-primary">{video.uploadedBy.username.charAt(0).toUpperCase()}</span>
+      <div className="flex flex-col gap-4 border-y border-border py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-12 w-12">
+            <AvatarFallback className="bg-primary/20 text-primary">
+              {video.uploadedBy.username.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="font-semibold">{video.uploadedBy.username}</p>
+            <p className="text-xs text-muted-foreground">Content Creator</p>
           </div>
-          <span className="font-semibold">{video.uploadedBy.username}</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button onClick={handleLike} variant="outline" size="sm">
-            <ThumbsUp className="mr-2 h-4 w-4" />
-            {video.likes}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={handleLike} variant="outline" size="sm" className="gap-2">
+            <ThumbsUp className="h-4 w-4" />
+            <span>{video.likes.toLocaleString()}</span>
           </Button>
+          <Button variant="outline" size="sm" className="gap-2">
+            <Bookmark className="h-4 w-4" />
+            Save
+          </Button>
+          <SocialShare title={video.title} url={`/video/${video._id}`} description={video.description} />
           {isOwner && (
-            <Button onClick={handleDelete} variant="destructive" size="sm">
-              <Trash2 className="mr-2 h-4 w-4" />
+            <Button onClick={handleDelete} variant="destructive" size="sm" className="gap-2">
+              <Trash2 className="h-4 w-4" />
               Delete
             </Button>
           )}
