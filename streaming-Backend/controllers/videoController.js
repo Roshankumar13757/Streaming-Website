@@ -1,9 +1,11 @@
 // controllers/videoController.js - Video Controller
 const fs = require('fs');
 const path = require('path');
+const mongoose = require('mongoose');
 const Video = require('../models/Video');
 const User = require('../models/User');
 const megaService = require('../services/megaService');
+const { getMimeTypeFromExtension, getFormatFromMimeType, isFormatSupported, getAlternativeFormats } = require('../utils/videoUtils');
 
 // @desc    Upload a new video
 // @route   POST /api/videos/upload
@@ -48,12 +50,23 @@ const uploadVideo = async (req, res) => {
     }
 
     // Create video record in MongoDB
+    const mimetype = req.file.mimetype || getMimeTypeFromExtension(req.file.originalname);
+    const format = getFormatFromMimeType(mimetype);
+    
     const video = await Video.create({
       title,
       description,
       category: category || 'Other',
       tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
       filename: req.file.originalname, // Keep original filename for reference
+      mimetype: mimetype,
+      formats: [{
+        format: format,
+        mimetype: mimetype,
+        fileSize: megaResult?.size || req.file.size || 0,
+        megaFileId: megaResult?.fileId || null,
+        filename: req.file.originalname
+      }],
       megaFileId: megaResult?.fileId || null,
       megaDownloadUrl: megaResult?.downloadUrl || null,
       megaPublicUrl: megaResult?.publicUrl || null,
@@ -149,73 +162,173 @@ const getVideoById = async (req, res) => {
 // @access  Public
 const streamVideo = async (req, res) => {
   try {
+    console.log(`Streaming request for video: ${req.params.id}, format: ${req.query.format || 'original'}`);
     const video = await Video.findById(req.params.id);
 
     if (!video) {
+      console.log('Video not found');
       return res.status(404).json({ error: 'Video not found' });
     }
 
+    console.log(`Video found: ${video.title}, MIME: ${video.mimetype}, Mega ID: ${video.megaFileId}`);
+
+    // Check if local file exists first
+    const localVideoPath = path.join(__dirname, '..', 'uploads', 'videos', video.filename || selectedFormat.filename);
+    const localFileExists = fs.existsSync(localVideoPath);
+    console.log(`Local file exists: ${localFileExists}, path: ${localVideoPath}`);
+
+    // Get requested format from query parameter or use original
+    const requestedFormat = req.query.format;
+    let selectedFormat = video.formats?.[0] || { mimetype: video.mimetype, format: getFormatFromMimeType(video.mimetype) };
+    
+    // If a specific format is requested, try to find it
+    if (requestedFormat && video.formats) {
+      const foundFormat = video.formats.find(f => f.format === requestedFormat);
+      if (foundFormat) {
+        selectedFormat = foundFormat;
+      }
+    }
+
+    const mimetype = selectedFormat.mimetype || video.mimetype || 'video/mp4';
+
     // Set common headers for video streaming
     res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Content-Type', mimetype);
     res.setHeader('Cache-Control', 'public, max-age=3600');
     // CORS headers for video streaming
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Range');
+    // Add format information
+    res.setHeader('X-Video-Format', selectedFormat.format || 'mp4');
+    res.setHeader('X-Supported-Formats', video.formats?.map(f => f.format).join(',') || selectedFormat.format);
+
+    // Try local file first if it exists
+    if (localFileExists) {
+      console.log('Streaming from local file');
+      const stat = fs.statSync(localVideoPath);
+      const fileSize = stat.size;
+      const range = req.headers.range;
+
+      if (range) {
+        const parts = range.replace(/bytes=/, '').split('-');
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunksize = (end - start) + 1;
+        const file = fs.createReadStream(localVideoPath, { start, end });
+        const head = {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunksize,
+          'Content-Type': mimetype,
+        };
+
+        res.writeHead(206, head);
+        file.pipe(res);
+      } else {
+        const head = {
+          'Content-Length': fileSize,
+          'Content-Type': mimetype,
+        };
+        res.writeHead(200, head);
+        fs.createReadStream(localVideoPath).pipe(res);
+      }
+      return;
+    }
 
     // If video is stored in Mega Drive, stream from Mega
-    if (video.megaFileId) {
+    if (selectedFormat.megaFileId || video.megaFileId) {
       try {
+        const megaFileId = selectedFormat.megaFileId || video.megaFileId;
+        const cacheDir = path.join(__dirname, '..', 'cache', 'videos');
+        const cacheFilePath = path.join(cacheDir, `${megaFileId}.mp4`);
+        
+        // Check if file is already cached locally
+        const isCached = fs.existsSync(cacheFilePath);
+        
+        if (isCached) {
+          console.log('Serving from cache:', cacheFilePath);
+          // Serve from cache
+          const stat = fs.statSync(cacheFilePath);
+          const fileSize = stat.size;
+          const range = req.headers.range;
+
+          if (range) {
+            const parts = range.replace(/bytes=/, '').split('-');
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+            const chunksize = (end - start) + 1;
+            const file = fs.createReadStream(cacheFilePath, { start, end });
+            const head = {
+              'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+              'Accept-Ranges': 'bytes',
+              'Content-Length': chunksize,
+              'Content-Type': mimetype,
+            };
+
+            res.writeHead(206, head);
+            file.pipe(res);
+          } else {
+            const head = {
+              'Content-Length': fileSize,
+              'Content-Type': mimetype,
+            };
+            res.writeHead(200, head);
+            fs.createReadStream(cacheFilePath).pipe(res);
+          }
+          return;
+        }
+
+        // File not cached, download from Mega and cache it
+        console.log('Downloading from Mega and caching:', megaFileId);
+        const startTime = Date.now();
+        const fileData = await megaService.downloadVideo(megaFileId);
+        const downloadTime = Date.now() - startTime;
+        console.log(`Downloaded ${fileData.length} bytes from Mega in ${downloadTime}ms`);
+        
+        // Ensure cache directory exists
+        if (!fs.existsSync(cacheDir)) {
+          fs.mkdirSync(cacheDir, { recursive: true });
+        }
+        
+        // Cache the file locally
+        fs.writeFileSync(cacheFilePath, fileData);
+        console.log('File cached locally:', cacheFilePath);
+        
         // Get range request if present
         const range = req.headers.range;
-        const fileSize = video.fileSize || 0;
+        const fileSize = fileData.length;
 
-        if (range && fileSize > 0) {
+        if (range) {
           // Handle range requests for video seeking
           const parts = range.replace(/bytes=/, '').split('-');
           const start = parseInt(parts[0], 10);
           const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
           const chunksize = (end - start) + 1;
 
-          // Download only the requested chunk from Mega
-          // Note: megajs doesn't support partial downloads directly,
-          // so we'll download the full file and slice it
-          // For better performance, consider implementing chunked streaming
-          const fileData = await megaService.downloadVideo(video.megaFileId);
-          
-          if (Buffer.isBuffer(fileData)) {
-            res.writeHead(206, {
-              'Content-Range': `bytes ${start}-${end}/${fileData.length}`,
-              'Accept-Ranges': 'bytes',
-              'Content-Length': chunksize,
-              'Content-Type': 'video/mp4',
-            });
-            res.end(fileData.slice(start, end + 1));
-          } else {
-            // If not a buffer, send full file
-            res.writeHead(200, {
-              'Content-Length': fileData.length,
-              'Content-Type': 'video/mp4',
-            });
-            res.end(fileData);
-          }
+          res.writeHead(206, {
+            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunksize,
+            'Content-Type': mimetype,
+          });
+          res.end(fileData.slice(start, end + 1));
         } else {
           // No range request - send full file
-          const fileData = await megaService.downloadVideo(video.megaFileId);
-          res.setHeader('Content-Length', fileData.length || fileSize);
+          res.setHeader('Content-Length', fileSize);
           res.writeHead(200);
           res.end(fileData);
         }
         return;
       } catch (megaError) {
         console.error('Error streaming from Mega:', megaError);
+        console.log('Falling back to local file storage');
         // Fallback to local file if Mega download fails
       }
     }
 
     // Fallback: Try local file storage
-    const videoPath = path.join(__dirname, '..', 'uploads', 'videos', video.filename);
+    const videoPath = path.join(__dirname, '..', 'uploads', 'videos', selectedFormat.filename || video.filename);
     if (fs.existsSync(videoPath)) {
       const stat = fs.statSync(videoPath);
       const fileSize = stat.size;
@@ -231,7 +344,7 @@ const streamVideo = async (req, res) => {
           'Content-Range': `bytes ${start}-${end}/${fileSize}`,
           'Accept-Ranges': 'bytes',
           'Content-Length': chunksize,
-          'Content-Type': 'video/mp4',
+          'Content-Type': mimetype,
         };
 
         res.writeHead(206, head);
@@ -239,7 +352,7 @@ const streamVideo = async (req, res) => {
       } else {
         const head = {
           'Content-Length': fileSize,
-          'Content-Type': 'video/mp4',
+          'Content-Type': mimetype,
         };
         res.writeHead(200, head);
         fs.createReadStream(videoPath).pipe(res);
@@ -250,6 +363,37 @@ const streamVideo = async (req, res) => {
   } catch (error) {
     console.error('Stream video error:', error);
     res.status(500).json({ error: 'Server error streaming video' });
+  }
+};
+
+// @desc    Get available formats for a video
+// @route   GET /api/videos/:id/formats
+// @access  Public
+const getVideoFormats = async (req, res) => {
+  try {
+    const video = await Video.findById(req.params.id);
+
+    if (!video) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    const formats = video.formats && video.formats.length > 0 ? video.formats : [{
+      format: getFormatFromMimeType(video.mimetype),
+      mimetype: video.mimetype,
+      fileSize: video.fileSize
+    }];
+
+    res.json({
+      success: true,
+      formats: formats,
+      originalFormat: {
+        format: getFormatFromMimeType(video.mimetype),
+        mimetype: video.mimetype
+      }
+    });
+  } catch (error) {
+    console.error('Get video formats error:', error);
+    res.status(500).json({ error: 'Server error fetching video formats' });
   }
 };
 
@@ -264,10 +408,27 @@ const likeVideo = async (req, res) => {
       return res.status(404).json({ error: 'Video not found' });
     }
 
-    video.likes += 1;
+    const userId = req.user.id;
+    const userObjectId = mongoose.Types.ObjectId(userId);
+    const hasLiked = video.likedBy.includes(userObjectId);
+
+    if (hasLiked) {
+      // User has already liked, so unlike
+      video.likedBy = video.likedBy.filter(id => !id.equals(userObjectId));
+      video.likes = Math.max(0, video.likes - 1);
+    } else {
+      // User hasn't liked, so add like
+      video.likedBy.push(userObjectId);
+      video.likes += 1;
+    }
+
     await video.save();
 
-    res.json({ success: true, likes: video.likes });
+    res.json({
+      success: true,
+      likes: video.likes,
+      hasLiked: !hasLiked
+    });
   } catch (error) {
     console.error('Like video error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -322,8 +483,15 @@ const deleteVideo = async (req, res) => {
 // @access  Public
 const getUserVideos = async (req, res) => {
   try {
+    const { userId } = req.params;
+
+    // Validate userId is a valid ObjectId
+    if (!userId || !require('mongoose').Types.ObjectId.isValid(userId)) {
+      return res.json({ success: true, videos: [] });
+    }
+
     const videos = await Video.find({ 
-      uploadedBy: req.params.userId,
+      uploadedBy: userId,
       status: 'published' 
     })
       .sort({ uploadDate: -1 })
@@ -341,6 +509,7 @@ module.exports = {
   getVideos,
   getVideoById,
   streamVideo,
+  getVideoFormats,
   likeVideo,
   deleteVideo,
   getUserVideos

@@ -16,9 +16,9 @@ const connectDB = async () => {
       w: 'majority',
       authSource: 'admin'
     });
-    console.log('[DB] ✅ MongoDB connected successfully');
+    console.log('[DB]  MongoDB connected successfully');
   } catch (error) {
-    console.error('[DB] ❌ MongoDB connection error:', error.message);
+    console.error('[DB]  MongoDB connection error:', error.message);
     console.error('[DB] Error code:', error.code);
     console.error('[DB] Error details:', error);
     // Exit process if connection fails to avoid running the app without DB

@@ -44,7 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const contentType = res.headers.get("content-type")
         if (contentType?.includes("application/json")) {
           const data = await res.json()
-          setUser(data.user)
+          // Transform the user object to match our interface
+          const userData = data.user
+          setUser({
+            id: userData._id || userData.id,
+            username: userData.username,
+            email: userData.email
+          })
         }
       }
     } catch (error) {
@@ -80,7 +86,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await res.json()
-      setUser(data.user)
+      // Transform the user object to match our interface
+      const userData = data.user
+      setUser({
+        id: userData._id || userData.id,
+        username: userData.username,
+        email: userData.email
+      })
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === "AbortError") {
@@ -118,7 +130,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await res.json()
-      setUser(data.user)
+      // Transform the user object to match our interface
+      const userData = data.user
+      setUser({
+        id: userData._id || userData.id,
+        username: userData.username,
+        email: userData.email
+      })
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === "AbortError") {

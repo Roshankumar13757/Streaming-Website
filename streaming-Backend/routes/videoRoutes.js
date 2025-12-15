@@ -9,6 +9,7 @@ const {
   getVideos,
   getVideoById,
   streamVideo,
+  getVideoFormats,
   likeVideo,
   deleteVideo,
   getUserVideos
@@ -49,6 +50,7 @@ const upload = multer({
 router.get('/', getVideos);
 router.get('/user/:userId', getUserVideos);
 router.get('/:id', getVideoById);
+router.get('/:id/formats', getVideoFormats);
 router.get('/:id/stream', streamVideo);
 
 // Protected routes

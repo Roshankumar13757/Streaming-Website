@@ -17,6 +17,20 @@ const videoSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  mimetype: {
+    type: String,
+    default: 'video/mp4'
+  },
+  formats: [{
+    format: {
+      type: String,
+      enum: ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'm4v', '3gp']
+    },
+    mimetype: String,
+    fileSize: Number,
+    megaFileId: String,
+    filename: String
+  }],
   // Mega Drive integration fields
   megaFileId: {
     type: String,
@@ -50,6 +64,10 @@ const videoSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  likedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   dislikes: {
     type: Number,
     default: 0

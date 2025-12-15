@@ -11,7 +11,7 @@ const generateToken = (id, username) => {
     throw new Error('JWT_SECRET is not configured on the server');
   }
 
-  return jwt.sign({ id, username }, secret, { expiresIn: '30d' });
+  return jwt.sign({ id, username }, secret, { expiresIn: '1d' });
 };
 
 // Set token in HTTP-only cookie
@@ -19,7 +19,7 @@ const sendTokenResponse = (user, statusCode, res) => {
   const token = generateToken(user._id, user.username);
 
   const options = {
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days, matches JWT expiry
+    maxAge: 1 * 24 * 60 * 60 * 1000, // 1 day, matches JWT expiry
     httpOnly: true, // Cookie cannot be accessed by JavaScript
     secure: process.env.NODE_ENV === 'production', // HTTPS only in production
     sameSite: 'strict' // CSRF protection

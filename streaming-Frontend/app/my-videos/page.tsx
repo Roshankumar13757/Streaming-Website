@@ -7,6 +7,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Upload } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface Video {
   _id: string
@@ -26,15 +27,20 @@ interface Video {
 export default function MyVideosPage() {
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
   useEffect(() => {
-    if (user) {
+    if (!authLoading && !user) {
+      router.push('/login')
+      return
+    }
+    if (user && user.id) {
       fetchMyVideos()
     }
-  }, [user])
+  }, [user, authLoading, router])
 
   async function fetchMyVideos() {
     try {
@@ -50,7 +56,7 @@ export default function MyVideosPage() {
     }
   }
 
-  if (loading) {
+  if (authLoading || !user) {
     return (
       <div className="flex justify-center py-12">
         <Spinner className="h-8 w-8" />

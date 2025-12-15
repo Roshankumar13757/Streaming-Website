@@ -16,6 +16,7 @@ interface Video {
   description: string
   views: number
   likes: number
+  likedBy?: string[]
   uploadDate: string
   category: string
   uploadedBy: {
@@ -26,6 +27,7 @@ interface Video {
 
 export function VideoDetails({ videoId }: { videoId: string }) {
   const [video, setVideo] = useState<Video | null>(null)
+  const [hasLiked, setHasLiked] = useState(false)
   const { user } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
@@ -51,6 +53,10 @@ export function VideoDetails({ videoId }: { videoId: string }) {
         if (contentType?.includes("application/json")) {
           const data = await res.json()
           setVideo(data.video)
+          // Check if current user has liked this video
+          if (user && data.video.likedBy) {
+            setHasLiked(data.video.likedBy.includes(user.id))
+          }
         }
       }
     } catch (error) {
@@ -84,6 +90,7 @@ export function VideoDetails({ videoId }: { videoId: string }) {
         if (contentType?.includes("application/json")) {
           const data = await res.json()
           setVideo((prev) => (prev ? { ...prev, likes: data.likes } : null))
+          setHasLiked(data.hasLiked)
         }
       }
     } catch (error) {
@@ -159,8 +166,13 @@ export function VideoDetails({ videoId }: { videoId: string }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={handleLike} variant="outline" size="sm" className="gap-2">
-            <ThumbsUp className="h-4 w-4" />
+          <Button
+            onClick={handleLike}
+            variant={hasLiked ? "default" : "outline"}
+            size="sm"
+            className="gap-2"
+          >
+            <ThumbsUp className={`h-4 w-4 ${hasLiked ? 'fill-current' : ''}`} />
             <span>{video.likes.toLocaleString()}</span>
           </Button>
           <Button variant="outline" size="sm" className="gap-2">

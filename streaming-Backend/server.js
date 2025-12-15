@@ -13,6 +13,7 @@ const { initializeMega } = require('./config/megaConfig');
 const authRoutes = require('./routes/authRoutes');
 const videoRoutes = require('./routes/videoRoutes');
 const commentRoutes = require('./routes/commentRoutes');
+const historyRoutes = require('./routes/historyRoutes');
 
 const app = express();
 connectDB();
@@ -48,6 +49,7 @@ app.use('/uploads', express.static('uploads'));
 app.use('/api/auth', authRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/comments', commentRoutes);
+app.use('/api/history', historyRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });

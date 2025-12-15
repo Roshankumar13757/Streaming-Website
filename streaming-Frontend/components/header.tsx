@@ -86,12 +86,6 @@ function HeaderContent() {
                     </div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href="/" className="cursor-pointer">
-                        <Home className="mr-2 h-4 w-4" />
-                        Home
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
                       <Link href="/profile" className="cursor-pointer">
                         <User className="mr-2 h-4 w-4" />
                         My Profile
@@ -103,8 +97,20 @@ function HeaderContent() {
                         My Videos
                       </Link>
                     </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/history" className="cursor-pointer">
+                        <History className="mr-2 h-4 w-4" />
+                        Watch History
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        await logout()
+                        router.push("/")
+                      }}
+                      className="cursor-pointer text-destructive focus:text-destructive"
+                    >
                       <LogOut className="mr-2 h-4 w-4" />
                       Logout
                     </DropdownMenuItem>
@@ -171,12 +177,19 @@ function HeaderContent() {
                     My Videos
                   </Link>
                 </Button>
+                <Button asChild variant="ghost" className="w-full justify-start">
+                  <Link href="/history" onClick={() => setMobileMenuOpen(false)}>
+                    <History className="mr-2 h-4 w-4" />
+                    Watch History
+                  </Link>
+                </Button>
                 <Button
                   variant="ghost"
                   className="w-full justify-start text-destructive"
-                  onClick={() => {
-                    logout()
+                  onClick={async () => {
+                    await logout()
                     setMobileMenuOpen(false)
+                    router.push("/")
                   }}
                 >
                   <LogOut className="mr-2 h-4 w-4" />

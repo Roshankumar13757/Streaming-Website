@@ -1,4 +1,5 @@
 // controllers/commentController.js - Comment Controller
+const mongoose = require('mongoose');
 const Comment = require('../models/Comment');
 const Video = require('../models/Video');
 
@@ -180,10 +181,27 @@ const likeComment = async (req, res) => {
       return res.status(404).json({ error: 'Comment not found' });
     }
 
-    comment.likes += 1;
+    const userId = req.user.id;
+    const userObjectId = mongoose.Types.ObjectId(userId);
+    const hasLiked = comment.likedBy.includes(userObjectId);
+
+    if (hasLiked) {
+      // User has already liked, so unlike
+      comment.likedBy = comment.likedBy.filter(id => !id.equals(userObjectId));
+      comment.likes = Math.max(0, comment.likes - 1);
+    } else {
+      // User hasn't liked, so add like
+      comment.likedBy.push(userObjectId);
+      comment.likes += 1;
+    }
+
     await comment.save();
 
-    res.json({ success: true, likes: comment.likes });
+    res.json({
+      success: true,
+      likes: comment.likes,
+      hasLiked: !hasLiked
+    });
   } catch (error) {
     console.error('Like comment error:', error);
     res.status(500).json({ error: 'Server error' });

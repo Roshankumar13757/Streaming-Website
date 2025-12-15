@@ -19,6 +19,7 @@ interface Comment {
   }
   createdAt: string
   likes: number
+  likedBy?: string[]
   replies: Comment[]
 }
 
@@ -26,6 +27,7 @@ export function CommentSection({ videoId }: { videoId: string }) {
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState("")
   const [loading, setLoading] = useState(false)
+  const [likedComments, setLikedComments] = useState<Set<string>>(new Set())
   const { user } = useAuth()
   const { toast } = useToast()
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
@@ -50,6 +52,17 @@ export function CommentSection({ videoId }: { videoId: string }) {
         if (contentType?.includes("application/json")) {
           const data = await res.json()
           setComments(data.comments)
+          
+          // Track which comments the user has liked
+          if (user && data.comments) {
+            const likedSet = new Set<string>()
+            data.comments.forEach((comment: Comment) => {
+              if (comment.likedBy && comment.likedBy.includes(user.id)) {
+                likedSet.add(comment._id)
+              }
+            })
+            setLikedComments(likedSet)
+          }
         }
       }
     } catch (error) {
@@ -133,7 +146,30 @@ export function CommentSection({ videoId }: { videoId: string }) {
       clearTimeout(timeoutId)
 
       if (res.ok) {
-        fetchComments()
+        const contentType = res.headers.get("content-type")
+        if (contentType?.includes("application/json")) {
+          const data = await res.json()
+          
+          // Update the comment likes count
+          setComments(prevComments => 
+            prevComments.map(comment => 
+              comment._id === commentId 
+                ? { ...comment, likes: data.likes }
+                : comment
+            )
+          )
+          
+          // Update liked status
+          setLikedComments(prev => {
+            const newSet = new Set(prev)
+            if (data.hasLiked) {
+              newSet.add(commentId)
+            } else {
+              newSet.delete(commentId)
+            }
+            return newSet
+          })
+        }
       }
     } catch (error) {
       toast({
@@ -193,9 +229,9 @@ export function CommentSection({ videoId }: { videoId: string }) {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleLikeComment(comment._id)}
-                    className="h-auto p-0 text-xs"
+                    className={`h-auto p-0 text-xs ${likedComments.has(comment._id) ? 'text-primary' : ''}`}
                   >
-                    <ThumbsUp className="mr-1 h-3 w-3" />
+                    <ThumbsUp className={`mr-1 h-3 w-3 ${likedComments.has(comment._id) ? 'fill-current' : ''}`} />
                     {comment.likes}
                   </Button>
                   {user && comment.userId._id === user.id && (
